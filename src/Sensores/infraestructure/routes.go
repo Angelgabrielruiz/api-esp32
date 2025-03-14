@@ -1,8 +1,6 @@
 package infraestructure
 
 import (
-	//"Send/src/Pagos/application"
-	//"Send/src/Pagos/infraestructure/adapters"
 	"API/src/Sensores/application"
 	"API/src/Sensores/infraestructure/adapters"
 
