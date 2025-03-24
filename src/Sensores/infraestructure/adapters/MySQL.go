@@ -1,5 +1,3 @@
-// File: MySQL.go
-
 package adapters
 
 import (
@@ -19,9 +17,9 @@ func NewMySQLRutas() *MySQLRutas {
     return &MySQLRutas{conn: conn}
 }
 
-func (mysql *MySQLRutas) Save(temperatura string, movimiento string) error {
-    query := "INSERT INTO rutas (temperatura, movimiento) VALUES (?, ?)"
-    result, err := mysql.conn.ExecutePreparedQuery(query, temperatura, movimiento)
+func (mysql *MySQLRutas) Save(temperatura string, movimiento string, distancia string, peso string) error {
+    query := "INSERT INTO rutas (temperatura, movimiento, distancia, peso) VALUES (?, ?, ?, ?)"
+    result, err := mysql.conn.ExecutePreparedQuery(query, temperatura, movimiento, distancia, peso)
     if err != nil {
         return err
     }
@@ -46,8 +44,10 @@ func (mysql *MySQLRutas) GetAll() ([]map[string]interface{}, error) {
     for rows.Next() {
         var id int32
         var temperatura string
-        var movimiento string
-        if err := rows.Scan(&id, &temperatura, &movimiento); err != nil {
+        var movimiento  string
+        var distancia   string
+        var peso        string
+        if err := rows.Scan(&id, &temperatura, &movimiento, &distancia, &peso); err != nil {
             return nil, err
         }
         
@@ -55,6 +55,8 @@ func (mysql *MySQLRutas) GetAll() ([]map[string]interface{}, error) {
             "id":          id,
             "temperatura": temperatura,
             "movimiento":  movimiento,
+            "distancia":   distancia,
+            "peso":        peso,
         }
         rutas = append(rutas, ruta)
     }
@@ -66,9 +68,9 @@ func (mysql *MySQLRutas) GetAll() ([]map[string]interface{}, error) {
     return rutas, nil
 }
 
-func (mysql *MySQLRutas) Update(id int, temperatura string, movimiento string) error {
-    query := "UPDATE rutas SET temperatura = ?, movimiento = ? WHERE id = ?"
-    result, err := mysql.conn.ExecutePreparedQuery(query, temperatura, movimiento, id)
+func (mysql *MySQLRutas) Update(id int, temperatura string, movimiento string, distancia string, peso string) error {
+    query := "UPDATE rutas SET temperatura = ?, movimiento = ?, distancia = ?, peso = ? WHERE id = ?"
+    result, err := mysql.conn.ExecutePreparedQuery(query, temperatura, movimiento, distancia , peso , id)
     if err != nil {
         return err
     }

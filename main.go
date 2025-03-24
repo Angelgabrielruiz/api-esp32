@@ -9,27 +9,24 @@ import (
 )
 
 func main() {
-    // Cargar variables de entorno
     err := godotenv.Load()
     if err != nil {
         log.Fatalf("Error al cargar el archivo .env: %v", err)
     }
 
-    // Crear servidor Gin
     r := gin.Default()
 
-    // Habilitar CORS para aceptar solicitudes del ESP32
+
     r.Use(cors.New(cors.Config{
-        AllowOrigins:     []string{"*"}, // Permitir todas las conexiones (puedes cambiarlo a tu IP específica)
+        AllowOrigins:     []string{"*"},
         AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
         AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
         AllowCredentials: true,
     }))
 
-    // Configurar rutas de sensores
     sensoresInfra.SetupRoutesDatos(r)
 
-    // Iniciar el servidor
+
     if err := r.Run(":8080"); err != nil {
         log.Fatalf("Error al iniciar el servidor: %v", err)
     }

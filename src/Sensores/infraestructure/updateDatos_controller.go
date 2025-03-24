@@ -26,6 +26,8 @@ func (usc *UpdateDatosController) Execute(c *gin.Context) {
 	var input struct {
 		Temperatura string `json:"temperatura"`
 		Movimiento  string `json:"movimiento"`
+		Distancia 	string `json:"distancia"`
+		Peso	  	string `json:"peso"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -33,7 +35,7 @@ func (usc *UpdateDatosController) Execute(c *gin.Context) {
 		return
 	}
 
-	if err := usc.useCase.Execute(id, input.Temperatura, input.Movimiento); err != nil {
+	if err := usc.useCase.Execute(id, input.Temperatura, input.Movimiento, input.Distancia, input.Peso); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al actualizar los datos del sensor"})
 		return
 	}
