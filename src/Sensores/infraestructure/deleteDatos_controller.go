@@ -30,18 +30,11 @@ func (dsc *DeleteDatosController) Execute(c *gin.Context) {
 	// Ejecutar el caso de uso
 	err = dsc.useCase.Execute(id)
 	if err != nil {
-		// Aquí podrías diferenciar errores, ej: si el use case devuelve un error específico "NotFound"
-		// if errors.Is(err, domain.ErrNotFound) { // Asumiendo que tienes errores de dominio
-		//     c.JSON(http.StatusNotFound, gin.H{"error": "Datos no encontrados"})
-		// } else {
 			log.Printf("ERROR: [DeleteCtrl] Falló la ejecución del caso de uso DeleteDatos (ID: %d): %v", id, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error interno al eliminar los datos"})
-		// }
 		return
 	}
 
 	log.Printf("INFO: [DeleteCtrl] Solicitud de eliminación procesada para ID %d.", id)
-	// Éxito - Devolver 200 OK o 204 No Content
-	// c.Status(http.StatusNoContent)
 	c.JSON(http.StatusOK, gin.H{"message": "Datos eliminados exitosamente"})
 }

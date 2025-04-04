@@ -21,8 +21,8 @@ func NewUpdateDatos(db domain.DatosRepository /*, notifier DatosNotifier */) *Up
 	}
 }
 
-func (up *UpdateDatos) Execute(id int, temperatura string, movimiento string, distancia string, peso string) error {
-	err := up.db.Update(id, temperatura, movimiento, distancia, peso)
+func (up *UpdateDatos) Execute(id int, temperatura string, movimiento string, distancia string, peso string, mac string) error {
+	err := up.db.Update(id, temperatura, movimiento, distancia, peso, mac)
 	if err != nil {
 		log.Printf("ERROR: [UpdateDatos] Falló al actualizar datos (ID: %d): %v", id, err)
 		return err

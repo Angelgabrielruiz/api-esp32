@@ -23,11 +23,9 @@ func NewWebSocketNotifier(wsManager *infraWS.Manager) *WebSocketNotifier {
 	return &WebSocketNotifier{wsManager: wsManager}
 }
 
-// NotifyNewData implementa el método de la interfaz application.DatosNotifier.
-// Toma la entidad de datos, la convierte a JSON y la envía a través del WebSocket Manager.
+
 func (n *WebSocketNotifier) NotifyNewData(data entities.Datos) error {
-	// Convertir la entidad de datos a JSON
-	// Los campos de entities.Datos deben estar exportados (mayúscula inicial) y tener `json:"tag"`
+
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		log.Printf("ERROR: [WebSocketNotifier] Error al codificar datos a JSON: %v. Data: %+v", err, data)
@@ -39,13 +37,6 @@ func (n *WebSocketNotifier) NotifyNewData(data entities.Datos) error {
 	log.Printf("INFO: [WebSocketNotifier] Transmitiendo datos vía WebSocket: %s", string(jsonData))
 	n.wsManager.BroadcastMessage(jsonData) // El manager se encarga del envío
 
-	// Asumimos que BroadcastMessage es asíncrono o maneja errores internamente.
-	// Si necesitáramos saber si el broadcast falló para algún cliente, el manager
-	// tendría que exponer esa información, lo cual complica el diseño.
-	// Para este caso, retornamos nil indicando que la notificación fue *iniciada*.
 	return nil
 }
 
-// Podrías implementar otros métodos de notificación aquí si la interfaz los tuviera
-// func (n *WebSocketNotifier) NotifyDataUpdated(data entities.Datos) error { ... }
-// func (n *WebSocketNotifier) NotifyDataDeleted(id int) error { ... }

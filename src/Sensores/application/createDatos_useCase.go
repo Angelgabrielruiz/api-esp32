@@ -8,14 +8,12 @@ import (
 	"log"
 )
 
-// CreateDatos es el caso de uso para crear nuevos datos de sensores.
-// Orquesta la interacción entre el repositorio y el notificador.
 type CreateDatos struct {
 	db       domain.DatosRepository // Puerto hacia la persistencia
 	notifier domain.DatosNotifier        // Puerto hacia la notificación
 }
 
-// NewCreateDatos constructor inyecta las dependencias (interfaces).
+
 func NewCreateDatos(db domain.DatosRepository, notifier domain.DatosNotifier) *CreateDatos {
 	if db == nil || notifier == nil {
 		// Es crucial validar las dependencias inyectadas
@@ -28,22 +26,20 @@ func NewCreateDatos(db domain.DatosRepository, notifier domain.DatosNotifier) *C
 }
 
 // Execute contiene la lógica de negocio principal para la creación.
-func (cr *CreateDatos) Execute(temperatura string, movimiento string, distancia string, peso string) error {
+func (cr *CreateDatos) Execute(temperatura string, movimiento string, distancia string, peso string, mac string) error {
 	// 1. Guardar en la base de datos usando el repositorio
-	err := cr.db.Save(temperatura, movimiento, distancia, peso)
+	err := cr.db.Save(temperatura, movimiento, distancia, peso, mac)
 	if err != nil {
 		log.Printf("ERROR: [CreateDatos] Falló al guardar datos: %v", err)
 		return err // Retornar el error de guardado
 	}
 
-	// 2. Si el guardado fue exitoso, notificar usando el puerto de notificación.
-	//    Crear la entidad/DTO con los datos que se guardaron para notificar.
-	//    Nota: Aquí no tenemos el ID generado por la DB a menos que Save lo devuelva.
 	newData := entities.Datos{
 		Temperatura: temperatura,
 		Movimiento:  movimiento,
 		Distancia:   distancia,
 		Peso:        peso,
+		Mac:		 mac,
 	}
 
 	// Llamar al método de la interfaz del notificador

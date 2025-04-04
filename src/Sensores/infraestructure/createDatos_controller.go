@@ -28,6 +28,7 @@ type CreateDatosRequest struct {
 	Movimiento  string `json:"movimiento" binding:"required"`
 	Distancia   string `json:"distancia" binding:"required"`
 	Peso        string `json:"peso" binding:"required"`
+	Mac         string `json:"mac" binding:"required"`
 }
 
 // Execute es el manejador de Gin para la ruta POST /datos.
@@ -53,13 +54,13 @@ func (csc *CreateDatosController) Execute(c *gin.Context) {
     }
 
 
-	// Llamar al caso de uso para ejecutar la lógica de negocio.
-	// El caso de uso se encarga de guardar y notificar.
+
 	err := csc.useCase.Execute(
 		requestBody.Temperatura,
 		requestBody.Movimiento,
 		requestBody.Distancia,
 		requestBody.Peso,
+		requestBody.Mac,  // Fixed: removed "mac:" prefix
 	)
 
 	// Manejar el resultado del caso de uso.

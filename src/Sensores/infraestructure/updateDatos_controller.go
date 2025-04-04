@@ -24,6 +24,7 @@ type UpdateDatosRequest struct {
 	Movimiento  string `json:"movimiento" binding:"required"`
 	Distancia   string `json:"distancia" binding:"required"`
 	Peso        string `json:"peso" binding:"required"`
+	Mac         string `json:"mac" binding:"required"`
 }
 
 func (udc *UpdateDatosController) Execute(c *gin.Context) {
@@ -54,6 +55,7 @@ func (udc *UpdateDatosController) Execute(c *gin.Context) {
 		requestBody.Movimiento,
 		requestBody.Distancia,
 		requestBody.Peso,
+		requestBody.Mac,
 	)
 	if err != nil {
 		// Diferenciar errores si es posible (ej: NotFound vs InternalError)
