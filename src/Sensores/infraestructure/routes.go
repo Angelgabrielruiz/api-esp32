@@ -1,3 +1,5 @@
+//File: routes.go
+
 package infraestructure
 
 import (
@@ -5,76 +7,70 @@ import (
 	sensorApp "API/src/Sensores/application"                // Alias para claridad
 	sensorAdapters "API/src/Sensores/infraestructure/adapters" // Alias
 	infraWS "API/src/Sensores/infraestructure/websocket"
-	userAdapters "API/src/Sensores/infraestructure/adapters" // Importar adaptador de usuarios
+	userDomain "API/src/Sensores/domain" // Importar el paquete que define UserRepository
+	// La dependencia de userAdapters puede ser necesaria aquí si se instancia aquí
+	// o si se pasa el repo ya creado desde main.go
 	"log"
 
-    // Importar tu middleware de autenticación
-    // "API/src/Auth/middleware"
-
-	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin" // Necesario para gin.HandlerFunc
 )
 
-func SetupRoutesDatos(r *gin.Engine, wsManager *infraWS.Manager, dbConn *core.Conn_MySQL /*, authMiddleware gin.HandlerFunc */) { // Recibe conexión y middleware Auth
+// SetupRoutesDatos configura las rutas para Sensores, AHORA recibe el middleware de Auth
+func SetupRoutesDatos(r *gin.Engine, wsManager *infraWS.Manager, dbConn *core.Conn_MySQL, userRepo userDomain.UserRepository, authMiddleware gin.HandlerFunc) {
 
 	log.Println("INFO: Configurando rutas y dependencias para Sensores...")
 
-    if dbConn == nil || dbConn.DB == nil {
-         log.Fatal("CRÍTICO: SetupRoutesDatos recibió una conexión DB nula.")
-    }
+	if dbConn == nil || dbConn.DB == nil {
+		log.Fatal("CRÍTICO: SetupRoutesDatos recibió una conexión DB nula.")
+	}
+	if userRepo == nil {
+		log.Fatal("CRITICO: SetupRoutesDatos recibió un userRepo nulo.")
+	}
+	if authMiddleware == nil {
+		log.Fatal("CRITICO: SetupRoutesDatos recibió un authMiddleware nulo.")
+	}
+
 
 	// --- 1. Crear Adaptadores ---
-	// Adaptador DB Sensores (AHORA recibe la conexión)
 	dbSensorAdapter := sensorAdapters.NewMySQLRutas(dbConn)
 	log.Println("INFO: Adaptador MySQL para Sensores creado.")
 
-	// Adaptador DB Usuarios (NUEVO, también recibe la conexión)
-	dbUserAdapter := userAdapters.NewMySQLUserRepository(dbConn)
-	log.Println("INFO: Adaptador MySQL para Usuarios creado.")
+	// userRepo ya viene inyectado desde main.go
 
-	// Adaptador Notificaciones WebSocket
 	wsNotifierAdapter := sensorAdapters.NewWebSocketNotifier(wsManager)
 	log.Println("INFO: Adaptador WebSocketNotifier creado.")
 
 	// --- 2. Crear Casos de Uso ---
-	// CreateDatos AHORA necesita userRepo
-	createDatosUseCase := sensorApp.NewCreateDatos(dbSensorAdapter, dbUserAdapter, wsNotifierAdapter)
+	// CreateDatos necesita el userRepo (que ya recibimos)
+	createDatosUseCase := sensorApp.NewCreateDatos(dbSensorAdapter, userRepo, wsNotifierAdapter)
 	getDatosUseCase := sensorApp.NewGetDatos(dbSensorAdapter)
-	updateDatosUseCase := sensorApp.NewUpdateDatos(dbSensorAdapter)
-	deleteDatosUseCase := sensorApp.NewDeleteDatos(dbSensorAdapter)
-	log.Println("INFO: Casos de uso creados e inyectados.")
+	updateDatosUseCase := sensorApp.NewUpdateDatos(dbSensorAdapter) // Podría necesitar userRepo si valida pertenencia
+	deleteDatosUseCase := sensorApp.NewDeleteDatos(dbSensorAdapter) // Podría necesitar userRepo si valida pertenencia
+	log.Println("INFO: Casos de uso de Sensores creados e inyectados.")
 
 	// --- 3. Crear Controladores ---
-	createDatosController := NewCreateDatosController(*createDatosUseCase) // Llamado por el consumidor
-	getDatosController := NewGetDatosController(*getDatosUseCase)         // Llamado por el frontend (necesita Auth)
-	updateDatosController := NewUpdateDatosController(*updateDatosUseCase) // Llamado por el frontend (necesita Auth)
-	deleteDatosController := NewDeleteDatosController(*deleteDatosUseCase) // Llamado por el frontend (necesita Auth)
-	log.Println("INFO: Controladores HTTP creados.")
+	createDatosController := NewCreateDatosController(*createDatosUseCase)
+	getDatosController := NewGetDatosController(*getDatosUseCase)
+	updateDatosController := NewUpdateDatosController(*updateDatosUseCase)
+	deleteDatosController := NewDeleteDatosController(*deleteDatosUseCase)
+	log.Println("INFO: Controladores HTTP de Sensores creados.")
 
 	// --- 4. Definir Rutas HTTP ---
-	// Endpoint para que el CONSUMIDOR envíe datos (puede o no necesitar auth)
-	// Si necesita auth, sería un token fijo del consumidor, no de un usuario final.
-    // Por ahora, asumimos que es un endpoint "interno" o protegido por red.
-	sensorDataIngestPath := "/api/sensor-data" // O usa "/datos" si prefieres, pero separa conceptualmente
+	// Endpoint de ingesta (llamado por el consumidor, usualmente no requiere auth de usuario final)
+	sensorDataIngestPath := "/api/sensor-data"
 	r.POST(sensorDataIngestPath, createDatosController.Execute)
-    log.Printf("INFO: Ruta POST %s configurada para ingesta de datos.", sensorDataIngestPath)
+	log.Printf("INFO: Ruta POST %s configurada para ingesta de datos (sin auth JWT usuario).", sensorDataIngestPath)
 
-
-	// Grupo para las rutas que el FRONTEND consume (protegidas por Auth)
+	// Grupo para las rutas del FRONTEND (protegidas por JWT)
 	datosGroup := r.Group("/datos")
-    // Aplicar middleware de autenticación a este grupo
-    // datosGroup.Use(authMiddleware) // DESCOMENTA cuando tengas el middleware
+	datosGroup.Use(authMiddleware) // <--- APLICAR MIDDLEWARE JWT A ESTE GRUPO
 	{
-		datosGroup.GET("", getDatosController.Execute)          // GET /datos (filtrado por usuario logueado)
-		datosGroup.PUT("/:id", updateDatosController.Execute)   // PUT /datos/:id (validando usuario logueado)
-		datosGroup.DELETE("/:id", deleteDatosController.Execute) // DELETE /datos/:id (validando usuario logueado)
+		datosGroup.GET("", getDatosController.Execute)          // Protegido
+		datosGroup.PUT("/:id", updateDatosController.Execute)   // Protegido
+		datosGroup.DELETE("/:id", deleteDatosController.Execute) // Protegido
 
-        // Opcional: Ruta admin para ver todo
-         // adminGroup := r.Group("/admin/datos")
-         // adminGroup.Use(authMiddleware) // Y un check de rol admin
-         // {
-         //     adminGroup.GET("", getDatosController.ExecuteAll)
-         // }
+		// Opcional: Ruta admin (si la implementas)
+		// datosGroup.GET("/all", getDatosController.ExecuteAll) // Necesitaría check de rol adicional
 	}
-	log.Println("INFO: Rutas HTTP para /datos (frontend) configuradas.")
-    // Nota: La ruta /ws se configura en main.go
+	log.Println("INFO: Rutas HTTP para /datos (frontend) configuradas y protegidas por JWT.")
 }

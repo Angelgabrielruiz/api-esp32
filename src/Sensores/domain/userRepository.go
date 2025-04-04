@@ -1,14 +1,23 @@
-package domain // O el paquete de dominio que uses para usuarios
+package domain
 
-// Opcional: Define una entidad User si no la tienes
+import "database/sql"
+
+// User representa la entidad de usuario
 type User struct {
-    ID       int
-    Username string
-    // ... otros campos que necesites
+	ID            int
+	Username      string
+	PasswordHash  string
+	MacAddress    sql.NullString
+	Role          string
 }
 
+// UserRepository define las operaciones de persistencia para usuarios
 type UserRepository interface {
+	FindUserIDByMAC(macAddress string) (int, error)
+	FindByUsername(username string) (*User, error)
+	Create(user *User) error // Asumiendo que ya añadiste este
 
-    FindUserIDByMAC(macAddress string) (int, error)
-
+	// --- AÑADIR ESTE MÉTODO ---
+	UpdateMacAddress(userID int, macAddress sql.NullString) error
+	// --------------------------
 }

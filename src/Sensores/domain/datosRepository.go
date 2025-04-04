@@ -1,3 +1,5 @@
+// File: src/Sensores/domain/datosRepository.go
+
 package domain
 
 import "API/src/Sensores/domain/entities"
