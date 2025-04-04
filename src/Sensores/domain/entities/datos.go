@@ -1,3 +1,5 @@
+//Files/datos.go
+
 package entities
 
 type Datos struct {

@@ -1,3 +1,5 @@
+//File: websocket_notifier.go
+
 package adapters
 
 import (

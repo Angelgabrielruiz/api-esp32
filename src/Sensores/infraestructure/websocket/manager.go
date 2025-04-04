@@ -1,3 +1,5 @@
+//File: manager.go
+
 package websocket // El paquete es 'websocket' dentro de infraestructure
 
 import (

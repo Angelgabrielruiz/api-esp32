@@ -1,3 +1,5 @@
+//File: updateDatos_useCase.go:
+
 package application
 
 import (
@@ -22,7 +24,7 @@ func NewUpdateDatos(db domain.DatosRepository /*, notifier DatosNotifier */) *Up
 }
 
 func (up *UpdateDatos) Execute(id int, temperatura string, movimiento string, distancia string, peso string, mac string) error {
-	err := up.db.Update(id, temperatura, movimiento, distancia, peso, mac)
+	err := up.db.Update(id, 0, temperatura, movimiento, distancia, peso, mac) // Replace '0' with the appropriate int value
 	if err != nil {
 		log.Printf("ERROR: [UpdateDatos] Falló al actualizar datos (ID: %d): %v", id, err)
 		return err

@@ -1,3 +1,4 @@
+//File: deleteDatos_controller.go
 package application
 
 import (
@@ -22,7 +23,7 @@ func NewDeleteDatos(db domain.DatosRepository /*, notifier DatosNotifier */) *De
 
 // Execute ahora devuelve error para indicar si la eliminación falló.
 func (dp *DeleteDatos) Execute(id int) error {
-	err := dp.db.Delete(id)
+	err := dp.db.Delete(id, 0) // Replace '0' with the appropriate second argument
 	if err != nil {
 		log.Printf("ERROR: [DeleteDatos] Falló al eliminar datos con ID %d: %v", id, err)
 		return err // Devuelve el error

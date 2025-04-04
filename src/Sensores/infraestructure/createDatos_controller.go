@@ -2,79 +2,84 @@ package infraestructure
 
 import (
 	"API/src/Sensores/application" // Depende solo de la capa de aplicación
+	"strings"                          // Para formatear errores
 	"log"
 	"net/http"
-	"strings" // Para validación simple
+
+	//"strings" // Para validación simple si es necesario
 
 	"github.com/gin-gonic/gin"
 )
 
-// CreateDatosController maneja las solicitudes HTTP para crear datos.
-// Depende del caso de uso correspondiente.
 type CreateDatosController struct {
 	useCase application.CreateDatos // Referencia al caso de uso
 }
 
-// NewCreateDatosController crea una instancia del controlador.
 func NewCreateDatosController(useCase application.CreateDatos) *CreateDatosController {
-	// No necesitamos validar useCase aquí porque los constructores de use case ya lo hacen.
 	return &CreateDatosController{useCase: useCase}
 }
 
-// CreateDatosRequest define la estructura esperada en el cuerpo JSON de la solicitud POST.
-// Usar `binding:"required"` para validación automática de Gin.
+// La request ahora solo necesita los campos que vienen del ESP32/Consumidor
 type CreateDatosRequest struct {
-	Temperatura string `json:"temperatura" binding:"required"`
-	Movimiento  string `json:"movimiento" binding:"required"`
-	Distancia   string `json:"distancia" binding:"required"`
-	Peso        string `json:"peso" binding:"required"`
-	Mac         string `json:"mac" binding:"required"`
+	Temperatura string `json:"temperatura"` // Quitar binding:"required" si algunos pueden faltar
+	Movimiento  string `json:"movimiento"`
+	Distancia   string `json:"distancia"`
+	Peso        string `json:"peso"`
+	Mac         string `json:"mac"` // ¡Esencial!
 }
 
-// Execute es el manejador de Gin para la ruta POST /datos.
+// Este endpoint será llamado por tu CONSUMIDOR
 func (csc *CreateDatosController) Execute(c *gin.Context) {
 	var requestBody CreateDatosRequest
 
-	// Validar y parsear el cuerpo JSON de la solicitud.
-	// ShouldBindJSON ya incluye validación si usas `binding:"required"`.
+	// Parsear el cuerpo JSON. ShouldBindJSON es suficiente.
 	if err := c.ShouldBindJSON(&requestBody); err != nil {
-		log.Printf("ERROR: [CreateCtrl] Datos inválidos en la solicitud: %v", err)
-		// Devolver un error claro al cliente.
+		log.Printf("ERROR: [CreateCtrl] Datos inválidos en la solicitud del consumidor: %v. Body: %s", err, c.Request.Body)
+		// Error 400 indica que el consumidor envió algo malformado
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":  "Datos inválidos o faltantes en la solicitud",
-			"detail": err.Error(), // Proporciona detalles del error de validación
+			"error":  "Payload JSON inválido o incompleto recibido del consumidor",
+			"detail": err.Error(),
 		})
 		return
 	}
 
-    // Validación adicional (opcional, podría estar en el use case o dominio)
-    if strings.TrimSpace(requestBody.Temperatura) == "" || /* otras validaciones */ false {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Valores no pueden estar vacíos"})
-        return
-    }
+	// Validar que la MAC no esté vacía (importante!)
+	if requestBody.Mac == "" {
+		log.Printf("ERROR: [CreateCtrl] Payload recibido sin MAC address: %+v", requestBody)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Falta la dirección MAC en el payload"})
+		return
+	}
 
-
-
+	// Llamar al caso de uso pasando los datos recibidos
 	err := csc.useCase.Execute(
 		requestBody.Temperatura,
 		requestBody.Movimiento,
 		requestBody.Distancia,
 		requestBody.Peso,
-		requestBody.Mac,  // Fixed: removed "mac:" prefix
+		requestBody.Mac, // Pasar la MAC
 	)
 
-	// Manejar el resultado del caso de uso.
 	if err != nil {
-		// Si el caso de uso falla (probablemente al guardar en DB), retornar error interno.
-		log.Printf("ERROR: [CreateCtrl] Falló la ejecución del caso de uso CreateDatos: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Error interno al registrar los datos del sensor",
-			// "detail": err.Error(), // Considera no exponer errores internos detallados al cliente final
-		})
+		// Analizar el tipo de error devuelto por el caso de uso
+		if strings.HasPrefix(err.Error(), "mac_no_asignada:") {
+			// MAC válida pero no asignada. Esto no es un error del servidor.
+			// Respondemos 200 OK o 202 Accepted al consumidor para que haga ACK,
+			// pero informamos en el log o cuerpo de respuesta (opcional).
+			log.Printf("INFO: [CreateCtrl] Datos de MAC no asignada (%s) descartados como esperado.", requestBody.Mac)
+			c.JSON(http.StatusOK, gin.H{"message": "Datos recibidos pero MAC no asignada a un usuario.", "mac": requestBody.Mac})
+			// O simplemente: c.Status(http.StatusNoContent) // 204
+		} else {
+			// Otro error (problema de DB, etc.) -> Error 500
+			log.Printf("ERROR: [CreateCtrl] Falló la ejecución del caso de uso CreateDatos: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Error interno al procesar los datos del sensor",
+			})
+		}
 		return
 	}
 
-	// Si el caso de uso se completó sin error, responder con éxito.
-	log.Printf("INFO: [CreateCtrl] Datos registrados exitosamente: %+v", requestBody)
-	c.JSON(http.StatusCreated, gin.H{"message": "Datos del sensor registrados exitosamente"}) // Usar 201 Created
+	// Éxito: el caso de uso guardó y notificó (o lo intentó)
+	log.Printf("INFO: [CreateCtrl] Datos procesados exitosamente para MAC: %s", requestBody.Mac)
+	// 201 Created es apropiado si se creó un recurso nuevo
+	c.JSON(http.StatusCreated, gin.H{"message": "Datos del sensor procesados exitosamente"})
 }
